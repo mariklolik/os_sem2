@@ -5,6 +5,7 @@ void * my_thread_function(void * arg){
     printf("Hello from new thread\n");
     return NULL;
 }
+
 int main() {
     // gcc mythread.c main.c -o main.o
     mythread_t thread;
