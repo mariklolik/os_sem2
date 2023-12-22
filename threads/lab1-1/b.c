@@ -1,4 +1,5 @@
 #define _GNU_SOURCE
+
 #include <stdio.h>
 #include <pthread.h>
 #include <string.h>
@@ -8,15 +9,15 @@
 #include <stdlib.h>
 
 void *mythread(void *arg) {
-	printf("mythread [%d %d %d]: Hello from mythread!\n", getpid(), getppid(), gettid());
-	return NULL;
+    printf("mythread [%d %d %d]: Hello from mythread!\n", getpid(), getppid(), gettid());
+    return NULL;
 }
 
 int main() {
-    pthread_t* threads = (pthread_t*) malloc(sizeof(pthread_t) * 5);
-	int err;
+    pthread_t *threads = (pthread_t *) malloc(sizeof(pthread_t) * 5);
+    int err;
 
-	printf("main [%d %d %d]: Hello from main!\n", getpid(), getppid(), gettid());
+    printf("main [%d %d %d]: Hello from main!\n", getpid(), getppid(), gettid());
 
     for (int i = 0; i < 5; ++i) {
         err = pthread_create(&threads[i], NULL, mythread, NULL);
@@ -25,8 +26,8 @@ int main() {
             return -1;
         }
     }
-	
+
     sleep(5);
     free(threads);
-	return 0;
+    return 0;
 }

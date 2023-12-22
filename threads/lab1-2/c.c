@@ -1,4 +1,5 @@
 #define _GNU_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
@@ -7,11 +8,11 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-void* new_thread(void* arg) {
+void *new_thread(void *arg) {
     printf("New thread: [%d]\n", gettid());
-    char** res = malloc(sizeof(char) * 13);
+    char **res = malloc(sizeof(char) * 13);
     *res = "Hello world!";
-    return (void*) res;
+    return (void *) res;
 }
 
 int main() {
@@ -23,13 +24,13 @@ int main() {
         printf("main: pthread_create() failed: %s\n", strerror(err));
         return -1;
     }
-    char** res;
-    err = pthread_join(thread1, (void**) &res);
+    char **res;
+    err = pthread_join(thread1, (void **) &res);
     if (err) {
         printf("main: pthread_join() failed: %s\n", strerror(err));
         return -1;
     }
-    
+
     printf("Main thread: [%d]. \"%s\" from new thread.\n", gettid(), *res);
     free(res);
 }

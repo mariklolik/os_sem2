@@ -1,4 +1,5 @@
 #define _GNU_SOURCE
+
 #include <stdio.h>
 #include <pthread.h>
 #include <string.h>
@@ -8,12 +9,12 @@
 
 typedef struct {
     int int_val;
-    char* string;
+    char *string;
 } my_struct;
 
-void* new_thread(void* arg) {
-    my_struct* get_item = (my_struct*) arg;
-    printf("New thread: [%d]\nStruct info:\nInt num: %d\nString: %s\n", gettid(), get_item -> int_val, get_item -> string);
+void *new_thread(void *arg) {
+    my_struct *get_item = (my_struct *) arg;
+    printf("New thread: [%d]\nStruct info:\nInt num: %d\nString: %s\n", gettid(), get_item->int_val, get_item->string);
     return NULL;
 }
 
@@ -24,7 +25,7 @@ int main() {
     item.int_val = 666;
     item.string = "string";
 
-    err = pthread_create(&thread1, NULL, new_thread, (void*) &item);
+    err = pthread_create(&thread1, NULL, new_thread, (void *) &item);
     if (err) {
         printf("main: pthread_create() failed: %s\n", strerror(err));
         return -1;

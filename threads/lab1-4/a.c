@@ -1,4 +1,5 @@
 #define _GNU_SOURCE
+
 #include <stdio.h>
 #include <pthread.h>
 #include <string.h>
@@ -6,7 +7,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-void* new_thread(void* arg) {
+void *new_thread(void *arg) {
     while (1) {
         // безопасная точка отмены в printf
         printf("ALLOALLO\n");

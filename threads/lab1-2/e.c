@@ -1,4 +1,5 @@
 #define _GNU_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
@@ -7,7 +8,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-void* new_thread(void* arg) {
+void *new_thread(void *arg) {
     int err;
     // сам убивает свои ресруры, его не надо join
     err = pthread_detach(pthread_self());

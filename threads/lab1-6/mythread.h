@@ -2,6 +2,7 @@
 #define MYTHREAD_H
 
 #define _GNU_SOURCE
+
 #include <errno.h>
 #include <fcntl.h>
 #include <pthread.h>
@@ -15,13 +16,15 @@
 #define MY_STACK_SIZE 4096 * 8
 
 typedef unsigned long int mythread_t;
-typedef void *(*start_routine_t)(void *); // указатель на функцию с сигнатурой f (void*)
 
-typedef struct mythread_t mythread_struct_t;
+typedef void *(*start_routine_t)(void *);
+
+typedef struct mythread_struct_t mythread_struct_t;
 
 
 int mythread_create(mythread_t *thread, void *(*start_routine)(void *),
                     void *arg);
+
 int mythread_join(mythread_t mytid, void **retval);
 
 #endif /* MYTHREAD_H */

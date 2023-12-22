@@ -1,4 +1,5 @@
 #define _GNU_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
@@ -7,7 +8,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-void* new_thread(void* arg) {
+void *new_thread(void *arg) {
     printf("New thread: [%d]\n", gettid());
     return NULL;
 }

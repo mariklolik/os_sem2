@@ -60,7 +60,7 @@ void *writer(void *arg) {
 	printf("writer [%d %d %d]\n", getpid(), getppid(), gettid());
 
 	set_cpu(1);
-
+	// set_cpu(2) нельзя т.к будет гонка данных (*val = tmp->val; в гет) и нет средств синхронизации
 	while (1) {
 		int ok = queue_add(q, i);
 		if (!ok)
@@ -72,29 +72,35 @@ void *writer(void *arg) {
 }
 
 int main() {
-	pthread_t tid;
+	pthread_t tid1;
+	pthread_t tid2;
 	queue_t *q;
 	int err;
 
 	printf("main [%d %d %d]\n", getpid(), getppid(), gettid());
 
-	q = queue_init(1000000);
+	// при маленьких значениях работают не очень-то параллельно потоому что оба потока успевают отработать
+	q = queue_init(10000000);
 
-	err = pthread_create(&tid, NULL, reader, q);
+	err = pthread_create(&tid1, NULL, reader, q);
 	if (err) {
 		printf("main: pthread_create() failed: %s\n", strerror(err));
 		return -1;
 	}
-
+	// говорит поставить поток в конец очердеи выполнения. здесь ничего не решает т.к tid1 уже работает
 	sched_yield();
 
-	err = pthread_create(&tid, NULL, writer, q);
+	
+	err = pthread_create(&tid2, NULL, writer, q);
 	if (err) {
 		printf("main: pthread_create() failed: %s\n", strerror(err));
 		return -1;
 	}
 
 	// TODO: join threads
+	pthread_join(tid1, NULL);
+    pthread_join(tid2, NULL);
+
 
 	pthread_exit(NULL);
 

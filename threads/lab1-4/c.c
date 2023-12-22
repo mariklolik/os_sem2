@@ -1,4 +1,5 @@
 #define _GNU_SOURCE
+
 #include <stdio.h>
 #include <pthread.h>
 #include <string.h>
@@ -7,27 +8,29 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-void cleanup_handler(void* arg) {
+void cleanup_handler(void *arg) {
     // Это функция очистки, которая будет вызвана при отмене потока
-    char* str = (char*)arg;
+    char *str = (char *) arg;
     free(str);
 }
 
-void* new_thread(void* arg) {
-    char* hello_str = (char*)malloc(12);
+void *new_thread(void *arg) {
+    char *hello_str = (char *) malloc(12);
     if (hello_str == NULL) {
         perror("Memory allocation failed");
         pthread_exit(NULL);
     }
 
     strcpy(hello_str, "hello world");
-    pthread_cleanup_push(cleanup_handler, hello_str); // Устанавливаем функцию очистки, которая вызовется при отмене потока
+    pthread_cleanup_push(cleanup_handler,
+                         hello_str); // Устанавливаем функцию очистки, которая вызовется при отмене потока
 
     while (1) {
         printf("%s\n", hello_str);
     }
 
-    pthread_cleanup_pop(1); // Вызываем функцию очистки, если поток не прервался, 1 - cleanup_handler вызывыается, 0 не вызывается
+    pthread_cleanup_pop(
+            1); // Вызываем функцию очистки, если поток не прервался, 1 - cleanup_handler вызывыается, 0 не вызывается
     return NULL;
 }
 
