@@ -33,7 +33,7 @@ queue_t* queue_init(int max_count) {
 
 	q->add_attempts = q->get_attempts = 0;
 	q->add_count = q->get_count = 0;
-
+	// создаем поток для мони оринга
 	err = pthread_create(&q->qmonitor_tid, NULL, qmonitor, q);
 	if (err) {
 		printf("queue_init: pthread_create() failed: %s\n", strerror(err));
@@ -44,7 +44,24 @@ queue_t* queue_init(int max_count) {
 }
 
 void queue_destroy(queue_t *q) {
-	// TODO: It's needed to implement this function
+  // Отменить поток с монитором
+  pthread_cancel(q->qmonitor_tid);
+  
+  // Убедиться что поток отменился
+  if (pthread_join(q->qmonitor_tid, NULL) != 0) {
+    perror("pthread_join");
+    exit(1);
+  }
+
+  // Освобождение памяти, занимаемой узлами очереди
+  while (q->first != NULL) {
+    qnode_t *temp = q->first;
+    q->first = q->first->next;
+    free(temp);
+  }
+
+  // Освобождение памяти, занятой для структуры queue_t
+  free(q);
 }
 
 int queue_add(queue_t *q, int val) {
@@ -82,6 +99,7 @@ int queue_get(queue_t *q, int *val) {
 
 	assert(q->count >= 0);
 
+	// если пустая очередь вернем 0 попытку засчитаем
 	if (q->count == 0)
 		return 0;
 
