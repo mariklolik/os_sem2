@@ -19,8 +19,10 @@
 #define RED "\033[41m"
 #define NOCOLOR "\033[0m"
 
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+sem_t full_sem;
+sem_t empty_sem;
 
-sem_t semaphore;
 
 void *qmonitor(void *arg) {
     queue_t *q = (queue_t *) arg;
@@ -37,7 +39,8 @@ void *qmonitor(void *arg) {
 
 // initializes the queue (not nodes)!
 queue_t *queue_init(int max_count) {
-    sem_init(&semaphore, 0, 1);
+    sem_init(&full_sem, 0,1);
+    sem_init(&empty_sem, 0,1);
     int err;
     queue_t *q = malloc(sizeof(queue_t));
     if (!q) {
@@ -66,16 +69,21 @@ queue_t *queue_init(int max_count) {
 
 void queue_destroy(queue_t *q) {
     qnode_t *tmp = q->first;
+    if (tmp == NULL) {
+        free(q);
+        return;
+    }
     while (tmp) {
         qnode_t *del = tmp;
         tmp = tmp->next;
         free(del);
     }
-    sem_destroy(&semaphore);
+    sem_destroy(&empty_sem);
+    sem_destroy(&full_sem);
+    pthread_cancel(q->qmonitor_tid);
 }
 
 int queue_add(queue_t *q, int val) {
-    sem_wait(&semaphore);
     q->add_attempts++;
 
 
@@ -84,7 +92,6 @@ int queue_add(queue_t *q, int val) {
 
     // check for fullness of the queue
     if (q->count == q->max_count) {
-        sem_post(&semaphore);
         return 0;
     }
 
@@ -100,6 +107,8 @@ int queue_add(queue_t *q, int val) {
     new->val = val;
     new->next = NULL;
 
+    sem_wait(&full_sem);
+    pthread_mutex_lock(&mutex);
     // case of empty queue
     if (!q->first) {
         q->first = q->last = new;
@@ -112,23 +121,24 @@ int queue_add(queue_t *q, int val) {
     // successful add
     q->count++;
     q->add_count++;
-    sem_post(&semaphore);
+    pthread_mutex_unlock(&mutex);
+    sem_post(&empty_sem);
     return 1;
 }
 
 
 int queue_get(queue_t *q, int *val) {
-    sem_wait(&semaphore);
     q->get_attempts++;
 
     assert(q->count >= 0);
 
     // check queue for emptiness
     if (q->count == 0) {
-        sem_post(&semaphore);
         return 0;
     }
 
+    sem_wait(&empty_sem);
+    pthread_mutex_lock(&mutex);
     // getting the very first node of the queue
     if (q->first == NULL) {
         puts("a");
@@ -137,20 +147,21 @@ int queue_get(queue_t *q, int *val) {
     *val = tmp->val;
     q->first = q->first->next;
 
-//    printf("%p\n", tmp);
-    // successful get
     free(tmp);
     q->count--;
     q->get_count++;
-    sem_post(&semaphore);
+    pthread_mutex_unlock(&mutex);
+    sem_post(&full_sem);
     return 1;
 }
 
 void queue_print_stats(queue_t *q) {
+    pthread_mutex_lock(&mutex);
     printf("queue stats: current size %d; attempts: (add: %ld, get: %ld, %ld); success (add: %ld, get: %ld, %ld)\n",
            q->count,
            q->add_attempts, q->get_attempts, q->add_attempts - q->get_attempts,
            q->add_count, q->get_count, q->add_count - q->get_count);
+    pthread_mutex_unlock(&mutex);
 }
 
 

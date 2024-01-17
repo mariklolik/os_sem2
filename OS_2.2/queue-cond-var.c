@@ -84,9 +84,8 @@ int queue_add(queue_t *q, int val) {
 
 
     // check for fullness of the queue
-    if (q->count == q->max_count) {
-        pthread_mutex_unlock(&mutex);
-        return 0;
+    while (q->count == q->max_count) {
+        pthread_cond_wait(&cond, &mutex);
     }
 
     // creating a new node
