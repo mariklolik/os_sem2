@@ -18,7 +18,7 @@
 #define RESET "\033[0m"
 
 #define CLIENTS_LIMIT 5
-#define BUFFER_SIZE 1550
+#define BUFFER_SIZE 8192
 #define DEFAULT_METHOD_SIZE 10
 #define DEFAULT_URI_SIZE 50
 #define DEFAULT_VERSION_SIZE 50
@@ -83,7 +83,7 @@ void *client_handler(void *arg) {
            ntohs(client_address.sin_port));
 
 
-    unsigned char buffer[BUFFER_SIZE];
+    char buffer[BUFFER_SIZE];
     ssize_t bytes_read = read(client_socket, buffer, BUFFER_SIZE);
     if (bytes_read < 0) {
         perror("error occurred while read");
@@ -95,12 +95,17 @@ void *client_handler(void *arg) {
         close(client_socket);
         return NULL;
     }
+    char* end_of_request = strstr(buffer, "\r\n\r\n");
+    if (end_of_request == NULL) {
+        strcat(buffer, "\r\n");
+        bytes_read += 2;
+    }
     printf("read %ld bytes\n", bytes_read);
     buffer[bytes_read] = '\0';
 
     unsigned char host[DEFAULT_HOST_SIZE];
-    if (host_from_request(reinterpret_cast<char *>(buffer), reinterpret_cast<char *>(host)) != 0) {
-        if (host_from_url(reinterpret_cast<char *>(buffer), reinterpret_cast<char *>(host)) != 0) {
+    if (host_from_request((char *) buffer, (char *) host) != 0) {
+        if (host_from_url((char *) buffer, (char *) host) != 0) {
             printf("TID: %d | Error parsing host from request.\n", gettid());
             close(client_socket);
             return NULL;
@@ -165,7 +170,7 @@ void *client_handler(void *arg) {
     // пересылаю ответ
     while ((bytes_read = read(dest_socket, buffer, BUFFER_SIZE)) > 0) {
         printf(YELLOW "\t\tread %ld bytes from destination\n" RESET, bytes_read);
-        if (-1 == (bytes_sent = write(client_socket, buffer, bytes_read))) {
+        if ((bytes_sent = write(client_socket, buffer, bytes_read)) < 0) {
             perror("error occured while sending data to client");
             close(client_socket);
             close(dest_socket);
@@ -179,7 +184,7 @@ void *client_handler(void *arg) {
     freeaddrinfo(res0);
     close(client_socket);
     close(dest_socket);
-    printf(GREEN "\taccepted client dead %s:%d\n" RESET, inet_ntoa(client_address.sin_addr),
+    printf(GREEN "\tclosed connection %s:%d\n" RESET, inet_ntoa(client_address.sin_addr),
            ntohs(client_address.sin_port));
     return NULL;
 }
@@ -192,14 +197,12 @@ int main() {
         return EXIT_FAILURE;
     }
 
+    printf("Type in port number\n");
+    int port;
+    scanf("%d", &port);
     struct sockaddr_in server_addr;
     server_addr.sin_family = AF_UNSPEC;
     server_addr.sin_addr.s_addr = INADDR_ANY;
-    int port;
-    int ign = scanf("ENTER PORT %d", &port);
-    if (ign != 1) {
-        perror("invalid port");
-    }
     server_addr.sin_port = htons(port);
     if (-1 == bind(server_socket, (struct sockaddr *) &server_addr, sizeof(server_addr))) {
         perror("bind failed");
@@ -212,6 +215,7 @@ int main() {
         close(server_socket);
         return EXIT_FAILURE;
     }
+    printf(PURPLE "server started on port: %d\n", port);
     printf(PURPLE "server listening for %d clients max\n", CLIENTS_LIMIT);
     fflush(stdout);
 
