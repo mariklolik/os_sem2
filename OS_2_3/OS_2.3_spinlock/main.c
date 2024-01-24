@@ -81,7 +81,8 @@ int main() {
         printf(GREEN "number of string pairs in ascending order: %d\n" RESET, first_spawn->stream_context.count_of_pairs);
         printf(CYAN "number of string pairs in descending order: %d\n" RESET, second_spawn->stream_context.count_of_pairs);
         printf(YELLOW "number of string pairs with equal len: %d\n" RESET, third_spawn->stream_context.count_of_pairs);
-        printf(RED "number of swaps: %d\n" RESET, swap_spawn->stream_context.count_of_pairs);
+        printf(RED "number of swaps: %d %d %d\n" RESET, swap_spawn->stream_context.count_of_pairs,
+               swap_spawn1->stream_context.count_of_pairs, swap_spawn2->stream_context.count_of_pairs);
         sleep(1);
     }
     pthread_join(first_s, NULL);
