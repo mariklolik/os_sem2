@@ -1,0 +1,2 @@
+GET http://www.columbia.edu/~fdc/sample.html HTTP/1.0
+
