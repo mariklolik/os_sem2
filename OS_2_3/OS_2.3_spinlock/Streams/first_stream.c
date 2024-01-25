@@ -1,7 +1,7 @@
 #include "first_stream.h"
 
 void* first_stream_routine(void* arg) {
-    puts("first stream start! (asc)");
+    puts("first stream start! (inc)");
     fflush(stdout);
     spawn_context* spawn_ctx = (spawn_context *) arg;
 

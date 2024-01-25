@@ -1,7 +1,7 @@
 #include "second_stream.h"
 
 void* second_stream_routine(void* arg) {
-    puts("second stream start! (asc)");
+    puts("second stream start! (dec)");
     fflush(stdout);
     spawn_context* spawn_ctx = (spawn_context*)arg;
 

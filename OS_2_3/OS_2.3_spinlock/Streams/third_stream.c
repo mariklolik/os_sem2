@@ -1,7 +1,7 @@
 #include "third_stream.h"
 
 void* third_stream_routine(void* arg) {
-    puts("third stream start! (asc)");
+    puts("third stream start! (eq)");
     fflush(stdout);
     spawn_context* spawn_ctx = (spawn_context *)arg;
 
