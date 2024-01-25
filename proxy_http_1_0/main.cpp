@@ -26,9 +26,14 @@
 
 
 typedef struct {
-    int client_socket;
-    struct sockaddr_in client_address;
+    int* client_socket;
+    struct sockaddr_in *client_address;
 } client_handler_ctx;
+
+void free_client_handler_ctx(client_handler_ctx *ctx) {
+    free(ctx->client_address);
+    free(ctx);
+}
 
 int host_from_url(char *request, char *resolved_host) {
     char *host_start = strstr(request, "http://");
@@ -59,7 +64,7 @@ int host_from_request(char *request, char *resolved_host) {
     }
     host_start += strlen("Host:");
 
-    const char *host_end = strpbrk(host_start, " \r\n:");
+    const char *host_end = strpbrk(host_start, "\r\n:");
     if (host_end == NULL) {
         return -1;
     }
@@ -76,23 +81,29 @@ int host_from_request(char *request, char *resolved_host) {
 
 
 void *client_handler(void *arg) {
-    const client_handler_ctx ctx = *(client_handler_ctx *) arg;
-    const int client_socket = ctx.client_socket;
-    struct sockaddr_in client_address = ctx.client_address;
-    printf(GREEN "\taccepted client from %s:%d\n" RESET, inet_ntoa(client_address.sin_addr),
-           ntohs(client_address.sin_port));
+    client_handler_ctx *ctx = (client_handler_ctx *)arg;
+    int *client_socket = ctx->client_socket;
+    struct sockaddr_in* client_address = ctx->client_address;
+    printf(GREEN "\taccepted client from %s:%d\n" RESET, inet_ntoa(client_address->sin_addr),
+           ntohs(client_address->sin_port));
 
 
     char buffer[BUFFER_SIZE];
-    ssize_t bytes_read = read(client_socket, buffer, BUFFER_SIZE);
+    ssize_t bytes_read = read(*client_socket, buffer, BUFFER_SIZE);
     if (bytes_read < 0) {
         perror("error occurred while read");
-        close(client_socket);
+        close(*client_socket);
+        free(client_address);
+        free(client_socket);
+        free(ctx);
         return NULL;
     }
     if (bytes_read == 0) {
         perror("connection closed by peer");
-        close(client_socket);
+        close(*client_socket);
+        free(client_address);
+        free(client_socket);
+        free(ctx);
         return NULL;
     }
     char* end_of_request = strstr(buffer, "\r\n\r\n");
@@ -107,7 +118,10 @@ void *client_handler(void *arg) {
     if (host_from_request((char *) buffer, (char *) host) != 0) {
         if (host_from_url((char *) buffer, (char *) host) != 0) {
             printf("TID: %d | Error parsing host from request.\n", gettid());
-            close(client_socket);
+            close(*client_socket);
+            free(client_address);
+            free(client_socket);
+            free(ctx);
             return NULL;
         }
     }
@@ -120,7 +134,10 @@ void *client_handler(void *arg) {
     // резолвлю имя
     if (-1 == getaddrinfo((char *) host, "http", &hints, &res0)) {
         perror("error occured while resolving domain name");
-        close(client_socket);
+        close(*client_socket);
+        free(client_address);
+        free(client_socket);
+        free(ctx);
         return NULL;
     }
     int dest_socket = 0, connected = 0;
@@ -143,14 +160,20 @@ void *client_handler(void *arg) {
     if (connected == 0) {
         if (0 == strcmp(cause, "socket")) {
             perror("error occured while creating dest socket");
-            close(client_socket);
+            close(*client_socket);
             freeaddrinfo(res0);
+            free(client_address);
+            free(client_socket);
+            free(ctx);
             return NULL;
         }
         if (0 == strcmp(cause, "connect")) {
             perror("error occured while connecting to destination host\n");
-            close(client_socket);
+            close(*client_socket);
             freeaddrinfo(res0);
+            free(client_address);
+            free(client_socket);
+            free(ctx);
             return NULL;
         }
     }
@@ -160,9 +183,12 @@ void *client_handler(void *arg) {
     // пересылаю запрос от клиента
     if (-1 == (bytes_sent = write(dest_socket, buffer, bytes_read))) {
         perror("error occured while sending packet to destination");
-        close(client_socket);
+        close(*client_socket);
         close(dest_socket);
         freeaddrinfo(res0);
+        free(client_address);
+        free(client_socket);
+        free(ctx);
         return NULL;
     }
     printf(CYAN "\t\tsent %d bytes to destination\n" RESET, bytes_sent);
@@ -170,11 +196,14 @@ void *client_handler(void *arg) {
     // пересылаю ответ
     while ((bytes_read = read(dest_socket, buffer, BUFFER_SIZE)) > 0) {
         printf(YELLOW "\t\tread %ld bytes from destination\n" RESET, bytes_read);
-        if ((bytes_sent = write(client_socket, buffer, bytes_read)) < 0) {
+        if ((bytes_sent = write(*client_socket, buffer, bytes_read)) < 0) {
             perror("error occured while sending data to client");
-            close(client_socket);
+            close(*client_socket);
             close(dest_socket);
             freeaddrinfo(res0);
+            free(client_address);
+            free(client_socket);
+            free(ctx);
             return NULL;
         }
         printf(CYAN "\t\tsent %d bytes to client\n" RESET, bytes_sent);
@@ -182,10 +211,14 @@ void *client_handler(void *arg) {
     printf(CYAN "\t\tsend %d bytes to client\n" RESET, bytes_sent);
 
     freeaddrinfo(res0);
-    close(client_socket);
+    close(*client_socket);
     close(dest_socket);
-    printf(GREEN "\tclosed connection %s:%d\n" RESET, inet_ntoa(client_address.sin_addr),
-           ntohs(client_address.sin_port));
+
+    printf(GREEN "\tclosed connection %s:%d\n" RESET, inet_ntoa(client_address->sin_addr),
+           ntohs(client_address->sin_port));
+    free(client_address);
+    free(client_socket);
+    free(ctx);
     return NULL;
 }
 
@@ -220,12 +253,23 @@ int main() {
     fflush(stdout);
 
     while (1) {
-        int client_socket;
-        struct sockaddr_in client_address;
-        socklen_t client_addr_size = sizeof(client_address);
-        if (-1 == (client_socket = accept(server_socket, (struct sockaddr *) &client_address, &client_addr_size))) {
+        int* client_socket = (int*)malloc(sizeof(int));
+        if (client_socket == NULL) {
+            perror("failed to allocate memory");
+            return EXIT_FAILURE;
+        }
+        struct sockaddr_in *client_address = (struct sockaddr_in *)malloc(sizeof(struct sockaddr_in));
+        if (client_address == NULL) {
+            perror("failed to allocate memory");
+            close(server_socket);
+            return EXIT_FAILURE;
+        }
+
+        socklen_t client_addr_size = sizeof(struct sockaddr_in);
+        if (-1 == (*client_socket = accept(server_socket, (struct sockaddr *)client_address, &client_addr_size))) {
             perror("accept failed");
             close(server_socket);
+            free(client_address);
             return EXIT_FAILURE;
         }
 
@@ -236,21 +280,35 @@ int main() {
         if (-1 == pthread_attr_init(&attr)) {
             perror("pthread_attr_init failed");
             close(server_socket);
-            close(client_socket);
+            close(*client_socket);
+            free(client_address);
             return EXIT_FAILURE;
         }
         if (-1 == pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED)) {
             perror("failed to set detached state");
             close(server_socket);
-            close(client_socket);
+            close(*client_socket);
+            free(client_address);
             return EXIT_FAILURE;
         }
-        client_handler_ctx ctx = {client_socket, client_address};
-        if (-1 == pthread_create(&handler_thread, &attr, &client_handler, &ctx)) {
-            perror("failed to create thread");
+
+        client_handler_ctx *ctx = (client_handler_ctx *)malloc(sizeof(client_handler_ctx));
+        if (ctx == NULL) {
+            perror("failed to allocate memory");
             close(server_socket);
-            close(client_socket);
-            return EXIT_SUCCESS;
+            close(*client_socket);
+            free(client_address);
+            return EXIT_FAILURE;
+        }
+
+        ctx->client_socket = client_socket;
+        ctx->client_address = client_address;
+
+        if (-1 == pthread_create(&handler_thread, &attr, &client_handler, ctx)) {
+            perror("failed to create thread");
+            free_client_handler_ctx(ctx);
+            close(server_socket);
+            return EXIT_FAILURE;
         }
     }
 }
