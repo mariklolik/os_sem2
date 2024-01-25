@@ -1,0 +1,2 @@
+GET http://housekeeping.kulichki.net/advices/sdbh/1.jpg HTTP/1.0
+
